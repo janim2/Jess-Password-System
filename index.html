@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JPS - Jess Password System Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .password-display {
+            font-size: 18px;
+            margin-top: 10px;
+        }
+        .letter-time, .word-time {
+            display: inline-block;
+            margin-right: 10px;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                Jess Password System (JPS) Demo
+            </div>
+            <div class="card-body">
+                <form id="jpsForm">
+                    <!-- Primary password input -->
+                    <div class="mb-3">
+                        <label for="passwordInput" class="form-label">Enter Password (Word by Word)</label>
+                        <input type="text" class="form-control" id="passwordInput" placeholder="Type your word">
+                    </div>
+                    <div class="word-timer mt-2">Word Held Time: <span id="wordTimer">0</span> seconds</div>
+
+                    <!-- Display word timings -->
+                    <div class="password-display" id="passwordDisplay"></div>
+
+                    <!-- Confirm password input -->
+                    <div class="mb-3 mt-4" id="confirmSection" style="display: none;">
+                        <label for="confirmPasswordInput" class="form-label">Confirm Password</label>
+                        <input type="text" class="form-control" id="confirmPasswordInput" placeholder="Confirm your password">
+                        <div class="confirm-password-display mt-2" id="confirmPasswordDisplay"></div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const passwordInput = document.getElementById('passwordInput');
+        const confirmPasswordInput = document.getElementById('confirmPasswordInput');
+        const passwordDisplay = document.getElementById('passwordDisplay');
+        const confirmPasswordDisplay = document.getElementById('confirmPasswordDisplay');
+        const wordTimer = document.getElementById('wordTimer');
+        const confirmSection = document.getElementById('confirmSection');
+        
+        let keyTimes = [];  // Stores original password words and timings
+        let confirmKeyTimes = []; // Stores confirmation words and timings
+        let startTime = 0;
+        let wordHeldTime = 0;
+        let timerStarted = false;
+        let isConfirming = false;
+        
+        // Function to track word timing
+        function startWordEntry() {
+            timerStarted = false;  // Reset the timer state
+            passwordInput.disabled = false;
+            passwordInput.focus();
+            wordTimer.textContent = '0';
+            wordHeldTime = 0;
+        }
+
+        // Keydown event: Start the timer when the first key is pressed
+        passwordInput.addEventListener('keydown', (event) => {
+            if (!timerStarted && !isConfirming) {
+                startTime = new Date().getTime();  // Start timer when first key is pressed
+                timerStarted = true;
+                updateWordTimer();  // Call the timer function
+            }
+        });
+
+        // On word entry completion (after keyup), log the word timing and move to next word
+        passwordInput.addEventListener('keyup', (event) => {
+            if (event.key === ' ' || event.key === 'Enter') {
+                const word = passwordInput.value.trim();
+                if (word) {
+                    // Save word and time
+                    wordHeldTime = Math.floor((new Date().getTime() - startTime) / 1000);  // Only whole seconds
+                    keyTimes.push({ word: word, time: wordHeldTime });
+                    displayWordTiming(passwordDisplay, word, wordHeldTime);
+
+                    passwordInput.value = '';  // Clear input for next word
+                    timerStarted = false;  // Reset timer for next word
+
+                    // If user finishes entering the password
+                    if (keyTimes.length === 3) {  // Example: 3 words for the password
+                        passwordInput.disabled = true;
+                        startConfirmPasswordEntry();
+                    }
+                }
+            }
+        });
+
+        // Function to update the word timer (counts in whole seconds)
+        function updateWordTimer() {
+            if (!passwordInput.disabled && timerStarted) {
+                const currentTime = new Date().getTime();
+                wordHeldTime = Math.floor((currentTime - startTime) / 1000);  // Convert to whole seconds
+                wordTimer.textContent = wordHeldTime;  // Show whole seconds only
+                requestAnimationFrame(updateWordTimer);  // Keep updating the timer
+            }
+        }
+
+        // Display word timing function
+        function displayWordTiming(container, word, time) {
+            const timeSpan = document.createElement('span');
+            timeSpan.classList.add('word-time');
+            timeSpan.textContent = `${word}: ${time}s`;
+            container.appendChild(timeSpan);
+        }
+
+        // Function to start confirming password
+        function startConfirmPasswordEntry() {
+            confirmSection.style.display = 'block';  // Show the confirm password input
+            confirmPasswordInput.focus();
+            isConfirming = true;
+            startTime = 0;  // Reset the timer for confirmation
+            confirmPasswordInput.disabled = false;
+        }
+
+        // Confirm password keydown event: Start the timer when the first key is pressed
+        confirmPasswordInput.addEventListener('keydown', (event) => {
+            if (!timerStarted && isConfirming) {
+                startTime = new Date().getTime();  // Start timer for confirm input
+                timerStarted = true;
+                updateWordTimer();  // Call the timer function for confirm
+            }
+        });
+
+        // Confirm password keyup event: Process the word and timing
+        confirmPasswordInput.addEventListener('keyup', (event) => {
+            if (event.key === ' ' || event.key === 'Enter') {
+                const word = confirmPasswordInput.value.trim();
+                if (word) {
+                    // Log confirmed word timing
+                    const confirmTime = Math.floor((new Date().getTime() - startTime) / 1000);  // Only whole seconds
+                    confirmKeyTimes.push({ word: word, time: confirmTime });
+                    displayWordTiming(confirmPasswordDisplay, word, confirmTime);
+
+                    confirmPasswordInput.value = '';  // Clear input for next word
+                    timerStarted = false;
+
+                    // Check if the confirmation matches original
+                    const originalWord = keyTimes[confirmKeyTimes.length - 1];  // Get the corresponding original word
+                    if (originalWord.word !== word || originalWord.time !== confirmTime) {
+                        alert('Password and timing do not match!');
+                        location.reload();  // Reload if mismatch
+                    }
+
+                    // If all words are confirmed correctly
+                    if (confirmKeyTimes.length === keyTimes.length) {
+                        confirmPasswordInput.disabled = true;
+                        alert('Password confirmed successfully!');
+                    }
+                }
+            }
+        });
+
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
